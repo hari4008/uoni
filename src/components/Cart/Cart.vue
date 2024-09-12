@@ -129,11 +129,14 @@ import {
     computed,
     onMounted,
     reactive,
-    ref
+    ref,
+    watch,
+    watchEffect
 } from 'vue';
 import {
     Form,
-    Field
+    Field,
+    useForm
 } from 'vee-validate';
 import * as yup from 'yup';
 import Dialog from 'primevue/dialog';
@@ -141,6 +144,11 @@ import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
 import SpeedDial from 'primevue/speeddial';
 import router from '@/router';
+import axios from 'axios';
+import {
+    jwtDecode
+} from "jwt-decode";
+import Swal from 'sweetalert2';
 
 export default {
     components: {
@@ -159,6 +167,11 @@ export default {
         const selectedAddress = ref(null);
         const visible = ref(false);
         const formMode = ref('create');
+        const websiteLogo = '/logo.png';
+        const userName = ref('');
+        const {
+            setFieldValue
+        } = useForm()
 
         const varObj = reactive({
             addressValue: '',
@@ -167,13 +180,6 @@ export default {
             stateValue: '',
             pincodeValue: '',
         });
-
-        // const schema = yup.object({
-        //     name: yup.string().required(),
-        //     email: yup.string().email().required(),
-        //     mobileNumber: yup.string().required(),
-        //     selectedAddress: yup.number().required(),
-        // });
 
         const schema = yup.object({
             name: yup.string().required('Name is required'),
@@ -196,15 +202,31 @@ export default {
             selectedAddress: '',
         });
 
+        // Watch userName.value and update initialValues accordingly
+        // watchEffect(() => {
+        //     initialValues.name = userName.value;
+        // });
+
         onMounted(async () => {
             try {
-                // window.scrollTo(0, 0)
                 const token = localStorage.getItem('token');
+
                 if (!token) {
                     router.push({
                         name: 'Login'
                     });
                 } else {
+                    const decodeToken = jwtDecode(token);
+                    userName.value = decodeToken.name;
+
+                    // Ensure initialValues.name is set after decoding the token
+                    initialValues.name = userName.value;
+
+                    setFieldValue('name', decodeToken.name);
+
+                    console.log("DecodedToken", decodeToken);
+                    console.log("initialValues.name", initialValues.name);
+
                     await store.fetchProducts();
                     await store.fetchAdresses();
                     getCartDetails();
@@ -214,8 +236,6 @@ export default {
             } catch (error) {
                 console.error(error);
             }
-
-            // }
         });
 
         const getCartDetails = async () => {
@@ -230,9 +250,6 @@ export default {
             addressesDetails.value = store.getAllAdress;
         };
 
-        // const getProductImage = (id) => productDetails.value[id]?.imgURL;
-        // const getProductName = (id) => productDetails.value[id]?.name;
-        // const getProductPrice = (id) => productDetails.value[id]?.price;
         const getProductName = (id) => productDetails.value[id - 1]?.name || "Unknown Product";
         const getProductImage = (id) => `http://localhost:5001/upload/images/${productDetails.value[id-1]?.image[0]}` || "Unknown Product";
         const getProductPrice = (id) => productDetails.value[id - 1]?.price || 0;
@@ -284,7 +301,6 @@ export default {
                 pincode: varObj.pincodeValue,
             };
             console.log("updatedAddress", updatedAddress)
-            // store.updateAdress(updatedAddress);
             resetFormAndCloseDialog();
         };
 
@@ -302,15 +318,6 @@ export default {
                 pincodeValue: '',
             });
             visible.value = false;
-        };
-
-        const orderNow = () => {
-            const orderDetails = {
-                cart: cartDetails.value,
-                selectedAddress: addressesDetails.value.find((addr) => addr.id === selectedAddress.value),
-                totalAmount: totalAmount.value,
-            };
-            store.placeOrder(orderDetails);
         };
 
         const getSpeedDialItems = (addressId) => [{
@@ -337,6 +344,112 @@ export default {
             },
         ];
 
+        const orderNow = (values) => {
+            console.log("VAlues", values)
+            const orderDetails = {
+                username: values.name,
+                email: values.email,
+                mobileNumber: values.mobileNumber,
+                cart: cartDetails.value,
+                selectedAddress: addressesDetails.value.find((addr) => addr.id === selectedAddress.value),
+                totalQnty: totalQnty.value,
+                totalAmount: totalAmount.value,
+            };
+            // store.placeOrder(orderDetails);
+            displayRazorpay(orderDetails);
+        };
+
+        const loadScript = async (srcUrl) => {
+            return new Promise((resolve, reject) => {
+                const script = document.createElement("script");
+                script.src = srcUrl;
+                script.onload = () => {
+                    resolve(true);
+                };
+                script.onerror = () => {
+                    reject(true);
+                };
+                document.body.appendChild(script);
+            });
+        }
+
+        const displayRazorpay = async (newValue) => {
+            const res = await loadScript("https://checkout.razorpay.com/v1/checkout.js");
+
+            if (!res) {
+                alert("Razorpay SDK failed to load. Are you online?");
+                return;
+            }
+            console.log('newvalue from razor ', newValue)
+
+            const result = await axios.post("http://localhost:5001/addorder", newValue);
+            console.log("result", result.data.currency);
+
+            if (!result) {
+                alert("Server error. Are you online?");
+                return;
+            }
+
+            // Getting the order details back
+            const {
+                amount,
+                id,
+                currency
+            } = result.data;
+
+            const options = {
+                // key: process.env.RAZORPAY_KEY_ID, // Enter the Key ID generated from the Dashboard
+                key: 'rzp_test_0ZVF5cPATwT9nC',
+                amount: amount.toString(),
+                currency: currency,
+                name: "Uoni Watch",
+                description: "Test Transaction",
+                image: websiteLogo,
+                order_id: id,
+                handler: async function (response) {
+                    const data = {
+                        orderCreationId: id,
+                        razorpayPaymentId: response.razorpay_payment_id,
+                        razorpayOrderId: response.razorpay_order_id,
+                        razorpaySignature: response.razorpay_signature,
+                        data: newValue
+                    };
+                    console.log("handler data ", data)
+                    const result = await axios.post("http://localhost:5001/success", data);
+                    console.log("handler result ", result)
+                    // alert(result.data.msg);
+                    if(result.data.msg == "success"){
+                        Swal.fire({
+                            position: "center",
+                            icon: "success",
+                            title: "You has been Succesfully <br/> Completed Payment",
+                            showConfirmButton: false,
+                            timer: 1000
+                        });
+                    }
+                    // sessionStorage.removeItem('TotalQnty')
+                    // sessionStorage.removeItem('cart')
+                    // navigate('/')
+                },
+                prefill: {
+                    name: "Uoni",
+                    email: "bhuvaharikrushn4315@gmail.com",
+                    contact: "9099470218",
+                },
+                notes: {
+                    address: "Vadodara , Gujrate",
+                },
+                theme: {
+                    // color: "linear-gradient(90deg, #ffba00 0%, #ff6c00 100%)",
+                    color: "#343a40",
+                },
+            };
+
+            const paymentObject = new window.Razorpay(options);
+            paymentObject.open();
+
+        }
+
         return {
             cartDetails,
             productDetails,
@@ -358,8 +471,10 @@ export default {
             UpdateAddress,
             openDialog,
             resetFormAndCloseDialog,
-            orderNow,
             getSpeedDialItems,
+            orderNow,
+            loadScript,
+            displayRazorpay,
         };
     },
 };
@@ -478,12 +593,6 @@ th {
     background-color: #2c2c2c;
     border-color: #3a3a3a;
 }
-
-/* @media (max-width: 768px) {
-    .card {
-        max-width: 100%;
-    }
-} */
 
 .order_text {
     margin-bottom: 1rem;

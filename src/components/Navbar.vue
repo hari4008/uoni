@@ -66,8 +66,10 @@
                     </li>
 
                     <li v-if="token">
-                        <RouterLink  to="">
-                           Sing Out
+                        <RouterLink to="">
+                            <span @click="logout">
+                                Logout
+                            </span>
                         </RouterLink>
                     </li>
                     <li  v-if="!token">

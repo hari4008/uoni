@@ -66,7 +66,7 @@
                     </li>
 
                     <li v-if="token">
-                        <RouterLink>
+                        <RouterLink  to="/login">
                            Sing Out
                         </RouterLink>
                     </li>

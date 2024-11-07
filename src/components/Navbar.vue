@@ -67,9 +67,7 @@
 
                     <li>
                         <RouterLink>
-                            <span @click="logout">
                                 Logout
-                            </span>
                         </RouterLink>
                     </li>
                     <li>

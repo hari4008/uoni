@@ -64,8 +64,25 @@
                     <li>
                         <RouterLink to="/register">Register</RouterLink>
                     </li>
-                    <li>
+                    <li v-if="!token">
+                        <RouterLink to="/register">Register</RouterLink>
+                    </li>
+
+                    <li v-if="token">
+                        <RouterLink>
+                            <span @click="logout">
+                                Logout
+                            </span>
+                        </RouterLink>
+                    </li>
+                    <li  v-if="!token">
                         <RouterLink to="/login">Login</RouterLink>
+                    </li>
+                    <li>
+                        <RouterLink to="/cart">
+                            <i class="bi bi-cart3"></i>
+                            <span class="badgebtn badge badge-dark">{{ cartLength }}</span>
+                        </RouterLink>
                     </li>
                     <li>
                         <RouterLink to="/cart">

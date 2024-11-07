@@ -65,14 +65,14 @@
                         <RouterLink to="/register">Register</RouterLink>
                     </li>
 
-                    <li v-if="token">
+                    <li>
                         <RouterLink>
                             <span @click="logout">
                                 Logout
                             </span>
                         </RouterLink>
                     </li>
-                    <li v-else>
+                    <li>
                         <RouterLink to="/login">Login</RouterLink>
                     </li>
                     <li>

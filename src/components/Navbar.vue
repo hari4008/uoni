@@ -64,14 +64,11 @@
                     <li>
                         <RouterLink to="/register">Register</RouterLink>
                     </li>
-
                     <li>
+                        <RouterLink to="/login">Login</RouterLink>
                         <RouterLink>
                                 Logout
                         </RouterLink>
-                    </li>
-                    <li>
-                        <RouterLink to="/login">Login</RouterLink>
                     </li>
                     <li>
                         <RouterLink to="/cart">

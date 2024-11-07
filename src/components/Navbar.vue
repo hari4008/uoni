@@ -65,7 +65,7 @@
                         <RouterLink to="/register">Register</RouterLink>
                     </li>
                     <li>
-                        <RouterLink to="/login">Logout</RouterLink>
+                        <RouterLink to="/login">Login</RouterLink>
                     </li>
                     <li>
                         <RouterLink to="/cart">

@@ -60,13 +60,13 @@
                     </li>
                     <li>
                         <RouterLink to="/contact">Contact Us</RouterLink>
-                    </li
+                    </li>
                     <li v-if="!token">
                         <RouterLink to="/register">Register</RouterLink>
                     </li>
 
                     <li v-if="token">
-                        <RouterLink >
+                        <RouterLink>
                             <span @click="logout">
                                 Logout
                             </span>
